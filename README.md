@@ -15,11 +15,9 @@ Charter is a lightweight filtering plugin that works with Ajax Load More to filt
 - If you want to use a clear button, add a button with the class of your choice.
 - If you want to use labels to display the selected terms, add a div with the class of your choice.
 
-Please note that `type="text"` is used for search input.
-
 ### Example
 
-```html
+```php
 <!-- Labels -->
 <div class="filter_name_labels"></div>
 
@@ -43,24 +41,32 @@ Please note that `type="text"` is used for search input.
 
 <!-- clear button -->
 <button class="filter_name_clear">Clear</button>
+
+<!-- If you are using Ajax Load More, add the following -->
+<?php echo do_shortcode('[ajax_load_more id="filter_name" post_type="post"]'); ?>
+
 ```
+Please note that `type="text"` is used for search input. Also the plugin supports inputs anywhere in the page, and duplicates are allowed.
+
 
 - Initialize a new instance of Charter with the following:
 
 ### Example
 
 ```javascript
-const team_filter = new Charter('team_filter', {
+const filter_name = new Charter('filter_name', {
     filter_type: 'ALM',
 });
 
 window.almComplete = function (alm) {
-    team_filter.alm_is_animating = false;
+    filter_name.alm_is_animating = false;
 };
 window.almEmpty = function (alm) {
-    team_filter.alm_is_animating = false;
+    filter_name.alm_is_animating = false;
 }
 ```
+
+- You only need `filter_type` to get started, but there are additional options you can use to customize the plugin. See below.
 
 ## Options
 
@@ -85,8 +91,15 @@ window.almEmpty = function (alm) {
     };
 ```
 
+
+##### Known Issues
+- Does not work with select2
+- Submit button support not finished
+- Order seletor support not started
+
 <hr>
 
 Dependencies: [Ajax Load More](https://connekthq.com/plugins/ajax-load-more/)
 License: Copyright 2024, Durkan Group. All rights reserved.
 Author: Keith Spang, kspang@durkangroup.com
+
