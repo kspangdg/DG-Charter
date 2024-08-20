@@ -99,7 +99,7 @@ window.almEmpty = function (alm) {
 
 <hr>
 
-Dependencies: [Ajax Load More](https://connekthq.com/plugins/ajax-load-more/)
-License: Copyright 2024, Durkan Group. All rights reserved.
-Author: Keith Spang, kspang@durkangroup.com
+Dependencies: [Ajax Load More](https://connekthq.com/plugins/ajax-load-more/)<br>
+License: Copyright 2024, Durkan Group. All rights reserved.<br>
+Author: Keith Spang, kspang@durkangroup.com<br>
 
