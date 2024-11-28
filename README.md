@@ -1,4 +1,4 @@
-# Charter 1.0.1
+# Charter 1.0.2
 
 Charter is a lightweight filtering plugin that works with Ajax Load More to filter posts by taxonomy terms.
 
