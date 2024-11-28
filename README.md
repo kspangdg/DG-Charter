@@ -4,53 +4,54 @@ Charter is a lightweight filtering plugin that works with Ajax Load More to filt
 
 ## Installation
 
-1. Upload the `charter` folder to the `/assets/js/vendor/` directory.
-2. Include the `//@prepros-prepend vendor/charter/charter.min.js` in `app.js`.
+1. Include the `charter.min.js` file in your theme.
+2. Include the `charter.min.css` file in your theme.
 
 ## Usage
 
-- Add `data-charter="filter_name"` attribute with a unique filter name to the filter container. Please note you can mutliple filters with the same name. If for example you need a separate filter for mobile, or you want to break up the filter into multiple sections, you can use the same name. They will all sync together. Changes to one filter will be reflected in all filters with the same name.
-- Add `data-input` attribute to all inputs you want to use for filtering.
-- Add `data-tax="taxonomy_name"` attribute to all inputs you want to use for filtering by taxonomy. Please note at the term slug will be taken from the value attribute, and the term name will be taken from the label text. They must be present, and the id, name, and for attributes must match.
+- Add `data-charter="filter_name"` attribute with a unique filter name to the Input container. Please note you can have mutliple filters with the same name. If for example you need a separate filter for mobile, or you want to break up the filter into multiple sections, you can use the same name. They will all sync together. Changes to one filter will be reflected in all filters with the same name.
+- Add `data-input="{type}"` attribute to all inputs you want to use for filtering (text, checkbox, radio). If multiple text inputs are used, the last one modified will be used for filtering.
+- Add `data-tax="taxonomy_name"` attribute to all inputs
+- Add `data-term="term_slug"` attribute to all inputs
 
 ### Example
 
 ```php
-<!-- filter container -->
-<div data-charter="filter_name">
-    <!-- labels -->
-    <div class="filter_name_labels"></div>
+<!-- Input container -->
+<fieldset data-charter="filter_name">
+    <legend>Filter</legend>
 
     <!-- search -->
-    <input type="text" data-input placeholder="Search">
+    <input type="text" data-input="text">
 
     <!-- checkbox -->
-    <input type="checkbox" id="name" name="name" data-input data-tax="location" value="new-york">
-    <label for="name"> New York</label><br>
+    <div data-input="checkbox" data-tax="location" data-term="new-york">New York</div>
+    <div data-input="checkbox" data-tax="filter-location" data-term="boston">Boston</div>
 
     <!-- radio -->
-    <input type="radio" id="name2" name="name2" data-input data-tax="month" value="july">
-    <label for="name2">July</label><br>
+    <div data-input="radio" data-tax="filter-month" data-term="july">July</div>
+    <div data-input="radio" data-tax="filter-month" data-term="june">June</div>
 
-    <!-- select -->
-    <select data-input data-tax="filter-location">
-        <option value="chicago">Chicago</option>
-        <option value="new-york">New York</option>
-        <option value="boston">Boston</option>
-    </select>
+</fieldset>
 
-    <!-- clear button -->
-    <button class="filter_name_clear">Clear</button>
+<!-- submit button -->
+<button class="filter_name_submit">Submit</button>
 
-    <!-- submit button -->
-    <button class="filter_name_submit">Submit</button>
-</div>
+<!-- labels -->
+<div class="filter_name_labels"></div>
+
+<!-- clear button -->
+<button class="filter_name_clear">Clear</button>
+
+<!-- Ajax Load More result text container -->
+<div class="alm-results-text">Loading...</div>
+
 
 <!-- If you are using Ajax Load More, add the following -->
 <?php echo do_shortcode('[ajax_load_more id="filter_name" post_type="post"]'); ?>
 
 ```
-Please note that `type="text"` is used for search input. Also the plugin supports inputs anywhere in the page, and duplicates are allowed.
+Please note that `type="text"` is used for search input.
 
 
 - Initialize a new instance of Charter with the following:
@@ -59,7 +60,7 @@ Please note that `type="text"` is used for search input. Also the plugin support
 
 ```javascript
 const filter_name = new Charter('filter_name', {
-    filter_type: 'ALM', // 'ALM' or 'JS'
+    filter_type: 'ALM', // 'ALM' or 'JS' (JS not supported yet)
     clear_button: {
         class: '.filter_name_clear', // Class name of the clear button
     },
@@ -72,7 +73,7 @@ const filter_name = new Charter('filter_name', {
     },
     submit_button: {
         class: '.filter_name_submit', // Class name of the submit button
-        submit_only: true, // Do not filter on change, only on submit
+        submit_only: true, // Do not filter on change, only on submit (setting to true is more ADA compliant)
     },
     callback: function () {
         // Add your custom callback here
@@ -91,10 +92,11 @@ window.almEmpty = function (alm) {
 ##### Known Issues / Future Improvements
 - Order seletor support not added yet (ASC, DESC. etc)
 - Add filter_type: 'JS' to use with JS filtering only (not ALM)
-- Add support for select2
+- Add support for tom-select dropdowns
 - Find cleaner way to set alm_is_animating to false (window.almComplete, window.almEmpty not working inside class)
 
 ##### Changelog
+- 1.0.2 - Added base styes for inputs, added radio support, made ADA improvements, plus minor bug fixes
 - 1.0.1 - Added support for multiple filters with the same name and added submit button support
 - 1.0.0 - Initial release
 

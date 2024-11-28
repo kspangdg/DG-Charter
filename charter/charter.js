@@ -1,5 +1,5 @@
 /*
- * Charter 1.0.1
+ * Charter 1.0.2
  * A lightweight filtering plugin.
  *
  * @dependency: Ajax Load More - https://connekthq.com/plugins/ajax-load-more/
@@ -13,7 +13,7 @@ class Charter {
     this.active_filters = {
       taxonomies: [],
       keyword: '',
-      order: 'ASC',
+      order: 'ASC', // todo
     }
     let defaults = {
       filter_type: '',
@@ -30,7 +30,11 @@ class Charter {
       },
       submit_button: {
         class: '',
-        submit_only: false,
+        submit_only: true,
+      },
+      results: {
+        container_class: '',
+        result_class: '',
       },
       callback: null,
     };
@@ -204,13 +208,17 @@ class Charter {
         if (this.settings.label_container.clickable) {
           label.style.cursor = 'pointer';
           label.setAttribute('tabindex', '0');
-          label.addEventListener('click', (e) => {
+          const handler = (e) => {
+            if (e.type === 'keyup' && e.key !== 'Enter') return;
             let term_slug = e.target.getAttribute('data-term');
             let taxonomy = this.active_filters.taxonomies.find(x => x.terms.findIndex(x => x.term_slug === term_slug) !== -1);
             let term = taxonomy.terms.find(x => x.term_slug === term_slug);
             this.charter_update_active_filters(taxonomy.taxonomy, term.term_slug, term.term_name, false);
             this.charter_filter();
-          });
+            this.charter_update_ui();
+          }
+          label.addEventListener('click', handler);
+          label.addEventListener('keyup', handler);
         }
         container.appendChild(label);
       }
@@ -221,12 +229,12 @@ class Charter {
   * Update UI
   * Update Inputs, Clear Button, and Submit Button based on active_filters object.
   * 
-  * @since 1.0.1
+  * @since 1.0.0
   * @param void
   * @return void
   */
 
-  charter_update_ui() {
+  charter_update_ui(update_labels = true) {
     let inputs = this.settings.inputs;
     let taxonomies = this.active_filters.taxonomies;
     let keyword = this.active_filters.keyword;
@@ -239,17 +247,18 @@ class Charter {
 
       if (input_type === 'checkbox' || input_type === 'radio') {
         let taxonomy = input[input_type].taxonomy;
-        let term_slug = input[input_type].input.value;
-        let label = document.querySelector('label[for="' + input[input_type].input.id + '"]');
-        let term_name = label.innerText;
+        let term_slug = input[input_type].input.getAttribute('data-term');
+        //let label = document.querySelector('label[for="' + input[input_type].input.id + '"]');
+        //let term_name = label.innerText;
         let term_index = taxonomies.findIndex(x => x.taxonomy === taxonomy);
         let term = taxonomies[term_index].terms.find(x => x.term_slug === term_slug);
 
         if (term !== undefined) {
           input[input_type].input.classList.add('active');
-          input[input_type].input.checked = true;
+          input[input_type].input.setAttribute('aria-checked', 'true');
         } else {
-          input[input_type].input.checked = false;
+          input[input_type].input.classList.remove('active');
+          input[input_type].input.setAttribute('aria-checked', 'false');
         }
       } else if (input_type === 'text') {
         input[input_type].input.value = keyword;
@@ -278,7 +287,7 @@ class Charter {
     }
 
     //label container
-    if (this.settings.label_container.class !== '') {
+    if (this.settings.label_container.class !== '' && update_labels) {
       let label_container = document.querySelector(this.settings.label_container.class);
       this.charter_update_labels(label_container);
     }
@@ -304,7 +313,7 @@ class Charter {
   */
 
   charter_filter() {
-    if (this.settings.filter_type === 'ALM') {
+    if (this.settings.filter_type === 'ALM') { // Filter with ALM
       let Active_Filters = this.charter_get_active_filters_formatted();
       let args = {
         taxonomies: (Active_Filters.taxonomies !== null) ? Active_Filters.taxonomies : '',
@@ -321,13 +330,11 @@ class Charter {
         this.filter_active = false;
       }
 
-      this.charter_update_ui();
-
       // if callback is set, run callback
       if (this.settings.callback !== null) {
         this.settings.callback();
       }
-    } else if (this.settings.filter_type === 'JS') {
+    } else if (this.settings.filter_type === 'JS') { // Filter with JS
       // TODO: Add JS filtering
     } else {
       console.error('DG Charter Error: No valid filter_type found. Please use ALM or JS.');
@@ -338,7 +345,7 @@ class Charter {
   * Set Inputs
   * Find all inputs with data-charter attribute and set them as inputs in the settings object.
   *
-  * @since 1.0.1
+  * @since 1.0.0
   * @param void
   * @return boolean (true if inputs are found, false if no inputs are found)
   */
@@ -363,70 +370,27 @@ class Charter {
 
         // Loop through all inputs with data-charter attribute
         for (let i = 0; i < data_inputs.length; i++) {
-          let input = data_inputs[i]
+          const input = data_inputs[i]
+          const input_type = input.getAttribute('data-input');
+          const key = input_type;
 
-          // Check if input is input or select
-          if (input.tagName === 'INPUT') {
-            let input_type = input.getAttribute('type');
-            let value = input.value;
-            let key = input_type;
-
-            // Check if input type is checkbox or radio or text
-            if (input_type === 'checkbox' || input_type === 'radio') {
-              let taxonomy = input.getAttribute('data-tax');
-
-              // Check if data-taxonomy attribute exists
-              if (taxonomy === null) {
-                console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
-                _return = false;
-              } else {
-
-                // Add class to input
-                input.classList.add('charter-input');
-
-                //if taxonomy doesn't exist in active_filters.taxonomies, add it
-                if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
-                  this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
-                }
-
-                // Add input to inputs array
-                inputs.push({
-                  [key]: {
-                    input: input,
-                    taxonomy: taxonomy,
-                  }
-                });
-
-              }
-            } else if (input_type === 'text') {
-
-              // Add class to input
-              input.classList.add('charter-input');
-
-              // Add input to inputs array
-              inputs.push({
-                [key]: {
-                  input: input,
-                  keyword: value,
-                }
-              });
-
-            }
-          } else if (input.tagName === 'SELECT') {
-            let value = input.value;
-            let key = input.tagName.toLowerCase();
-            let taxonomy = input.getAttribute('data-tax');
+          // Check if input is checkbox
+          if (input_type === 'checkbox' || input_type === 'radio') {
+            const taxonomy = input.getAttribute('data-tax');
 
             // Check if data-taxonomy attribute exists
             if (taxonomy === null) {
-              console.error('DG Charter Error: No data-tax attribute found on ' + input.tagName + ' input.');
+              console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
               _return = false;
             } else {
 
-              // Add class to input
-              input.classList.add('charter-input');
+              // Add class and attributes to input
+              input.classList.add('charter-' + input_type);
+              input.setAttribute('role', input_type);
+              input.setAttribute('aria-checked', 'false');
+              input.setAttribute('tabindex', '0');
 
-              // if taxonomy doesn't exist in active_filters.taxonomies, add it
+              //if taxonomy doesn't exist in active_filters.taxonomies, add it
               if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
                 this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
               }
@@ -440,8 +404,47 @@ class Charter {
               });
 
             }
+          } else if (input_type === 'select') {
+            const taxonomy = input.getAttribute('data-tax');
+
+            // Check if data-taxonomy attribute exists
+            if (taxonomy === null) {
+              console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
+              _return = false;
+            } else {
+
+              // Add class and attributes to input
+              input.classList.add('charter-select');
+
+              //if taxonomy doesn't exist in active_filters.taxonomies, add it
+              if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
+                this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
+              }
+
+              // Add input to inputs array
+              inputs.push({
+                [key]: {
+                  input: input,
+                  taxonomy: taxonomy,
+                }
+              });
+            }
+          } else if (input_type === 'text') {
+
+              const value = input.value;
+
+              // Add class to input
+              input.classList.add('charter-text');
+
+              // Add input to inputs array
+              inputs.push({
+                [key]: {
+                  input: input,
+                  keyword: value,
+                }
+              });
           } else {
-            console.error('DG Charter Error: ' + input.tagName + ' is not a valid input type. Please use input, select, checkbox, or radio.');
+            console.error('DG Charter Error: ' + input_type + ' is not a valid data-input value. Please use text, select, checkbox, or radio.');
             _return = false;
           }
         }
@@ -495,53 +498,54 @@ class Charter {
   * Set Events
   * Set events for all inputs in the settings object.
   *
-  * @since 1.0.1
+  * @since 1.0.0
   * @param void
   * @return void
   */
 
   charter_events() {
     let inputs = this.settings.inputs;
+    
     let submit_only = this.settings.submit_button.submit_only;
 
       if (inputs !== null && inputs.length > 0) {
         for (let i = 0; i < inputs.length; i++) {
           let input = inputs[i];
-          let input_type = Object.keys(input)[0];
+          let input_type = Object.keys(input)[0];       
 
           if (input_type === 'checkbox' || input_type === 'radio') {
-            input[input_type].input.addEventListener('change', (e) => {
-              let taxonomy = input[input_type].taxonomy;
-              let term_slug = input[input_type].input.value;
-              let label = document.querySelector('label[for="' + input[input_type].input.id + '"]');
-              let term_name = label.innerText;
-              this.charter_update_active_filters(taxonomy, term_slug, term_name, false);
-              if (!submit_only) this.charter_filter();
-
-            });
+            const handler = (e) => {
+              if (e.type === 'keyup' && e.key !== 'Enter') return;
+                let taxonomy = input[input_type].taxonomy;
+                let term_slug = input[input_type].input.getAttribute('data-term');
+                let term_name = input[input_type].input.innerText;
+                this.charter_update_active_filters(taxonomy, term_slug, term_name, (input_type === 'radio'));
+                if (!submit_only) this.charter_filter();
+                this.charter_update_ui(!submit_only);
+            }
+            input[input_type].input.addEventListener('click', handler);
+            input[input_type].input.addEventListener('keyup', handler);
           } else if (input_type === 'text') {
             input[input_type].input.addEventListener('keyup', (e) => {
+              this.active_filters.keyword = input[input_type].input.value;
               if (e.key === 'Enter') {
-                this.active_filters.keyword = input[input_type].input.value;
                 if (!submit_only) this.charter_filter();
+                this.charter_update_ui(!submit_only);
               }
             });
           } else if (input_type === 'select') {
-            input[input_type].input.addEventListener('change', (e) => {
-              let taxonomy = input[input_type].taxonomy;
-              let term_slug = input[input_type].input.value;
-              let term_name = input[input_type].input.options[input[input_type].input.selectedIndex].text;
-              this.charter_update_active_filters(taxonomy, term_slug, term_name, true);
-              if (!submit_only) this.charter_filter();
-            });
+            // TODO: revisit select input after tom select is implemented
+
           } else if (input_type === 'clear_button') {
             input.clear_button.input.addEventListener('click', (e) => {
               this.charter_clear_active_filters()
               this.charter_filter();
+              this.charter_update_ui();
             });
           } else if (input_type === 'submit_button') {
             input.submit_button.input.addEventListener('click', (e) => {
               this.charter_filter();
+              this.charter_update_ui();
             });
           }
         }
@@ -565,4 +569,5 @@ class Charter {
     this.charter_events();
   }
 }
+
 

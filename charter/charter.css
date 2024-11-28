@@ -1,0 +1,73 @@
+/* DG Charter */
+[data-charter] .charter-checkbox, [data-charter] .charter-radio {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1rem;
+    -webkit-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
+  }
+  
+  [data-charter] .charter-checkbox::before, [data-charter] .charter-radio::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1rem;
+    height: 1rem;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    -webkit-transition: background-color 0.3s, border-color 0.3s, -webkit-box-shadow 0.3s;
+    transition: background-color 0.3s, border-color 0.3s, -webkit-box-shadow 0.3s;
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, -webkit-box-shadow 0.3s;
+  }
+  
+  [data-charter] .charter-checkbox::after {
+    content: "✓";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1rem;
+    height: 1rem;
+    text-align: center;
+    line-height: 1rem;
+    color: #000;
+    font-size: 0.9rem;
+    display: none;
+  }
+  
+  [data-charter] .charter-checkbox:hover::before, [data-charter] .charter-checkbox:focus-visible::before, [data-charter] .charter-radio:hover::before, [data-charter] .charter-radio:focus-visible::before {
+    -webkit-box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+    border-color: #777;
+    background-color: #fff;
+  }
+  
+  [data-charter] .charter-checkbox.active::after, [data-charter] .charter-radio.active::after {
+    display: block;
+  }
+  
+  [data-charter] .charter-checkbox:focus-visible, [data-charter] .charter-radio:focus-visible {
+    outline: none !important;
+  }
+  
+  [data-charter] .charter-radio::before {
+    border-radius: 50%;
+  }
+  
+  [data-charter] .charter-radio::after {
+    content: "";
+    position: absolute;
+    top: 0.3rem;
+    left: 0.3rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    background-color: #000;
+    border-radius: 50%;
+    display: none;
+  }
