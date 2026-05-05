@@ -3,571 +3,717 @@
  * A lightweight filtering plugin.
  *
  * @dependency: Ajax Load More - https://connekthq.com/plugins/ajax-load-more/
- * @license Copyright 2024, Durkan Group. All rights reserved.
+ * @license Copyright 2025, Durkan Group. All rights reserved.
  * @author: Keith Spang, kspang@durkangroup.com
 */
 
 class Charter {
-  constructor(_slug, args) {
-    this.slug = _slug;
-    this.active_filters = {
-      taxonomies: [],
-      keyword: '',
-      order: 'ASC', // todo
+    constructor(_slug, args) {
+      this.slug = _slug;
+      this.active_filters = {
+        taxonomies: [],
+        keyword: '',
+        order: 'ASC', // todo
+      }
+      let defaults = {
+        filter_type: '',
+        inputs: [],
+        clear_button: {
+          class: '',
+        },
+        label_container: {
+          class: '',
+          clickable: false,
+          taxonomies: true,
+          keyword: false,
+          order: false,
+        },
+        submit_button: {
+          class: '',
+          submit_only: true,
+        },
+        results: {
+          container_class: '',
+          result_class: '',
+          result_text: '',
+        },
+        callback: null,
+      };
+      this.settings = Object.assign({}, defaults, args);
+      this.filter_active = false;
+      this.alm_is_animating = false;
+      this.charter_init();
     }
-    let defaults = {
-      filter_type: '',
-      inputs: [],
-      clear_button: {
-        class: '',
-      },
-      label_container: {
-        class: '',
-        clickable: false,
-        taxonomies: true,
-        keyword: false,
-        order: false,
-      },
-      submit_button: {
-        class: '',
-        submit_only: true,
-      },
-      results: {
-        container_class: '',
-        result_class: '',
-      },
-      callback: null,
-    };
-    this.settings = Object.assign({}, defaults, args);
-    this.filter_active = false;
-    this.alm_is_animating = false;
-    this.charter_init();
-  }
-
-  /*
-  * Ajax Load More
-  * Send data to Ajax Load More to filter posts.
-  * 
-  * @since 1.0.0
-  * @param object args {taxonomies: string, terms: string, operator: string, keyword: string, order: string}
-  * @return void
-  */
-  charter_ajaxloadmore(args) {
-    if (this.alm_is_animating) return false; // Exit if filtering is still active 
-    this.alm_is_animating = true;
-    let data = {};
-
-
-    data['taxonomy'] = args.taxonomies;
-    data['taxonomy-terms'] = args.terms;
-    data['taxonomy-operator'] = args.operator;
-    data['s'] = args.keyword;
-    data['posts_per_page'] = '20';
-    data['order'] = args.order_by;
-    data['orderby'] = 'title';
-    ajaxloadmore.filter('fade', '300', data); // Send data to Ajax Load More
-	};
-
-  /*
-  * Clear Active Filters Taxonomies
-  * Clear all terms a taxonomiea in the active_filters object, keyword and order.
-  * 
-  * @since 1.0.0
-  * @param void
-  * @return void
-  */
-
-  charter_clear_active_filters() {
-    // clear active_filters object
-    let taxonomies = this.active_filters.taxonomies;
-    for (let i = 0; i < taxonomies.length; i++) {
-      taxonomies[i].terms = [];
-    }
-    this.active_filters.keyword = '';
-    this.active_filters.order = 'ASC';
-
-    // hide clear button if set
-    if (this.settings.clear_button.class !== '') {
-      let clear_button = document.querySelector(this.settings.clear_button.class);
-      clear_button.classList.remove('active');
-    }
-  }
   
-  /*
-  * Update Active Filters Taxonomies
-  * Update the active_filters object with the current taxonomy and term.
-  * 
-  * @since 1.0.0
-  * @param string _taxonomy
-  * @param string term_slug
-  * @param string term_name
-  * @param boolean replace (if true, replace all terms in taxonomy with new term, if false, add or remove term)
-  * @return void
-  */
-
-  charter_update_active_filters(_taxonomy, term_slug, term_name, replace = false) {
-    let taxonomy = this.active_filters.taxonomies.find(x => x.taxonomy === _taxonomy);
-    let term_index = taxonomy.terms.findIndex(x => x.term_slug === term_slug);
-    let term = {
-      term_slug: term_slug,
-      term_name: term_name,
+    /*
+    * Ajax Load More
+    * Send data to Ajax Load More to filter posts.
+    * 
+    * @since 1.0.0
+    * @param object args {taxonomies: string, terms: string, operator: string, keyword: string, order: string}
+    * @return void
+    */
+    charter_ajaxloadmore(args) {
+      if (this.alm_is_animating) return false; // Exit if filtering is still active 
+      this.alm_is_animating = true;
+      let data = {};
+  
+  
+      data['taxonomy'] = args.taxonomies;
+      data['taxonomy-terms'] = args.terms;
+      data['taxonomy-operator'] = args.operator;
+      data['s'] = args.keyword;
+      data['posts_per_page'] = '20';
+      data['order'] = args.order_by;
+      data['orderby'] = 'title';
+      ajaxloadmore.filter('fade', '300', data); // Send data to Ajax Load More
     };
-
-    if (replace) {
-      taxonomy.terms = [term];
-    } else {
-      if (term_index === -1) {
-        taxonomy.terms.push(term);
-      } else {
-        taxonomy.terms.splice(term_index, 1);
+  
+    /*
+    * Clear Active Filters
+    * Clear all terms a taxonomiea in the active_filters object, keyword and order.
+    * 
+    * @since 1.0.0
+    * @param void
+    * @return void
+    */
+    charter_clear_active_filters() {
+      // clear active_filters object
+      let taxonomies = this.active_filters.taxonomies;
+      for (let i = 0; i < taxonomies.length; i++) {
+        taxonomies[i].terms = [];
       }
-    }
-    
-  }
-
-  /*
-  * Format Active Filters
-  * Format the active_filters object for use in ALM.
-  * 
-  * @since 1.0.0
-  * @param void
-  * @return object {taxonomies: string, terms: string, operator: string}
-  */
-
-  charter_get_active_filters_formatted() {
-    let taxonomies_array = [], terms_array = [], operator_array = [];
-    let taxonomies_string = '', terms_string = '', operator_string = '';
-    let active_filters_taxonomies = this.active_filters.taxonomies;
-
-    for (let i = 0; i < active_filters_taxonomies.length; i++) {
-      let taxonomy = active_filters_taxonomies[i];
-
-      if (taxonomy.terms.length > 0) {
-        taxonomies_array.push(taxonomy.taxonomy);
-        let term_slugs = taxonomy.terms.map(x => x.term_slug).join(',');
-        terms_array.push(term_slugs);
-        operator_array.push('IN');
-      }
-
-    }
-
-    taxonomies_string = taxonomies_array.join(':');
-    terms_string = terms_array.join(':');
-    operator_string = operator_array.join(':');
-
-    return {taxonomies: taxonomies_string, terms: terms_string, operator: operator_string};
-  }
-
-  /*
-  * Update Labels
-  * Add or remove labels based on active_filters object.
-  * 
-  * @since 1.0.0
-  * @param HTMLElement container
-  * @return void
-  */
-
-  charter_update_labels(container) {
-    let taxonomies = this.active_filters.taxonomies;
-    let keyword = this.active_filters.keyword;
-    let order = this.active_filters.order;
-    let labels = [];
-    // Add labels to container
-    if (container !== null) {
-      if (taxonomies.length > 0 && this.settings.label_container.taxonomies) {
-        // Loop through all taxonomies
-        for (let i = 0; i < taxonomies.length; i++) {
-          let taxonomy = taxonomies[i];
-          let terms = taxonomy.terms;
-    
-          // Loop through all terms in taxonomy
-          for (let j = 0; j < terms.length; j++) {
-            let term = terms[j];
-            labels.push({slug: term.term_slug, name: term.term_name});
-          }
-        }
-      }
-
-      // Add keyword to labels
-      if (keyword !== '' && this.settings.label_container.keyword) {
-        labels.push({slug: keyword, name: keyword});
-      }
-
-      // Add order to labels
-      if (order !== 'ASC' && this.settings.label_container.order) {
-        labels.push({slug: order, name: order});
-      }
-      container.innerHTML = '';
-      for (let i = 0; i < labels.length; i++) {
-        let label = document.createElement('span');
-        label.classList.add('label');
-        label.classList.add('charter-label');
-        label.setAttribute('data-term', labels[i].slug);
-        label.innerHTML = labels[i].name;
-        // if clickable is set to true, add a click event to remove label
-        if (this.settings.label_container.clickable) {
-          label.style.cursor = 'pointer';
-          label.setAttribute('tabindex', '0');
-          const handler = (e) => {
-            if (e.type === 'keyup' && e.key !== 'Enter') return;
-            let term_slug = e.target.getAttribute('data-term');
-            let taxonomy = this.active_filters.taxonomies.find(x => x.terms.findIndex(x => x.term_slug === term_slug) !== -1);
-            let term = taxonomy.terms.find(x => x.term_slug === term_slug);
-            this.charter_update_active_filters(taxonomy.taxonomy, term.term_slug, term.term_name, false);
-            this.charter_filter();
-            this.charter_update_ui();
-          }
-          label.addEventListener('click', handler);
-          label.addEventListener('keyup', handler);
-        }
-        container.appendChild(label);
-      }
-    }
-  }
-
-  /*
-  * Update UI
-  * Update Inputs, Clear Button, and Submit Button based on active_filters object.
-  * 
-  * @since 1.0.0
-  * @param void
-  * @return void
-  */
-
-  charter_update_ui(update_labels = true) {
-    let inputs = this.settings.inputs;
-    let taxonomies = this.active_filters.taxonomies;
-    let keyword = this.active_filters.keyword;
-    let order = this.active_filters.order;
-
-    // Loop through all inputs
-    for (let i = 0; i < inputs.length; i++) {
-      let input = inputs[i];
-      let input_type = Object.keys(input)[0];
-
-      if (input_type === 'checkbox' || input_type === 'radio') {
-        let taxonomy = input[input_type].taxonomy;
-        let term_slug = input[input_type].input.getAttribute('data-term');
-        //let label = document.querySelector('label[for="' + input[input_type].input.id + '"]');
-        //let term_name = label.innerText;
-        let term_index = taxonomies.findIndex(x => x.taxonomy === taxonomy);
-        let term = taxonomies[term_index].terms.find(x => x.term_slug === term_slug);
-
-        if (term !== undefined) {
-          input[input_type].input.classList.add('active');
-          input[input_type].input.setAttribute('aria-checked', 'true');
-        } else {
-          input[input_type].input.classList.remove('active');
-          input[input_type].input.setAttribute('aria-checked', 'false');
-        }
-      } else if (input_type === 'text') {
-        input[input_type].input.value = keyword;
-      } else if (input_type === 'select') {
-        let taxonomy = input[input_type].taxonomy;
-        let term_slug = input[input_type].input.value;
-        let term_index = taxonomies.findIndex(x => x.taxonomy === taxonomy);
-        let term = taxonomies[term_index].terms.find(x => x.term_slug === term_slug);
-
-        if (term !== undefined) {
-          input[input_type].input.selectedIndex = term_index;
-        } else {
-          input[input_type].input.selectedIndex = 0;
-        }
-      }
-    }
-
-    // Update clear button
-    if (this.settings.clear_button.class !== '') {
-      let clear_button = document.querySelector(this.settings.clear_button.class);
-      if (this.filter_active) {
-        clear_button.classList.add('active');
-      } else {
+      this.active_filters.keyword = '';
+      this.active_filters.order = 'ASC';
+  
+      // hide clear button if set
+      if (this.settings.clear_button.class !== '') {
+        let clear_button = document.querySelector(this.settings.clear_button.class);
         clear_button.classList.remove('active');
       }
     }
-
-    //label container
-    if (this.settings.label_container.class !== '' && update_labels) {
-      let label_container = document.querySelector(this.settings.label_container.class);
-      this.charter_update_labels(label_container);
-    }
-
-    // Update submit button
-    if (this.settings.submit_button.class !== '') {
-      let submit_button = document.querySelector(this.settings.submit_button.class);
-      if (this.filter_active) {
-        submit_button.classList.add('active');
-      } else {
-        submit_button.classList.remove('active');
-      }
-    }
-  }
-
-  /*
-  * Filter Items
-  * References the active_filters object and filters items. Using ALM or JS.
-  * 
-  * @since 1.0.0
-  * @param void
-  * @return void
-  */
-
-  charter_filter() {
-    if (this.settings.filter_type === 'ALM') { // Filter with ALM
-      let Active_Filters = this.charter_get_active_filters_formatted();
-      let args = {
-        taxonomies: (Active_Filters.taxonomies !== null) ? Active_Filters.taxonomies : '',
-        terms: (Active_Filters.terms !== null) ? Active_Filters.terms : '',
-        operator: (Active_Filters.operator !== null) ? Active_Filters.operator : '',
-        keyword: this.active_filters.keyword,
-        order: this.active_filters.order,
+    
+    /*
+    * Update Active Filters
+    * Update the active_filters object with the current taxonomy and term.
+    * 
+    * @since 1.0.0
+    * @param string _taxonomy
+    * @param string term_slug
+    * @param string term_name
+    * @param boolean replace (if true, replace all terms in taxonomy with new term, if false, add or remove term)
+    * @return void
+    */
+    charter_update_active_filters(_taxonomy, term_slug, term_name, replace = false) {
+      let taxonomy = this.active_filters.taxonomies.find(x => x.taxonomy === _taxonomy);
+      let term_index = taxonomy.terms.findIndex(x => x.term_slug === term_slug);
+      let term = {
+        term_slug: term_slug,
+        term_name: term_name,
       };
-      this.charter_ajaxloadmore(args);
-
-      if (args.taxonomies !== '' || args.keyword !== '' || args.order !== 'ASC') {
-        this.filter_active = true;
-      } else if (args.taxonomies === '' && args.keyword === '' && args.order === 'ASC') {
-        this.filter_active = false;
+  
+      if (replace) {
+        taxonomy.terms = [term];
+      } else {
+        if (term_index === -1) {
+          taxonomy.terms.push(term);
+        } else {
+          taxonomy.terms.splice(term_index, 1);
+        }
       }
-
-      // if callback is set, run callback
-      if (this.settings.callback !== null) {
-        this.settings.callback();
-      }
-    } else if (this.settings.filter_type === 'JS') { // Filter with JS
-      // TODO: Add JS filtering
-    } else {
-      console.error('DG Charter Error: No valid filter_type found. Please use ALM or JS.');
-    }
-  }
-
-  /*
-  * Set Inputs
-  * Find all inputs with data-charter attribute and set them as inputs in the settings object.
-  *
-  * @since 1.0.0
-  * @param void
-  * @return boolean (true if inputs are found, false if no inputs are found)
-  */
-
-  charter_inputs() {
-    let _return = true;
-    let inputs = this.settings.inputs;
-    const filter_containers = document.querySelectorAll('[data-charter="' + this.slug + '"]');
-
-    // Check if filter containers are found
-    if (filter_containers === null || filter_containers.length === 0) {
-      console.error('DG Charter Error: No filter containers found with data-charter attribute.');
-      return false;
+      
     }
 
-    // Loop through all filter containers
-    for (let i = 0; i < filter_containers.length; i++) {
-      let data_inputs = filter_containers[i].querySelectorAll('[data-input]');
+    /*
+    * Hide/show elements
+    * Utility function to hide or show elements based on a condition.
+    * 
+    * @since 1.0.9
+    * @param {HTMLElement} element - The element to show or hide.
+    * @param {boolean} condition - If true, show the element; if false, hide it.
+    */
+    charter_toggle_visibility(element, condition) {
+      if (!element) {
+        console.error('DG Charter Error: Element not found in charter_toggle_visibility().');
+        return;
+      }
+      if (condition) {
+        element.style.display = '';
+        element.style.visibility = 'visible';
+        element.style.position = '';
+        element.style.opacity = '1';
+        element.style.pointerEvents = 'auto';
+      } else {
+        element.style.display = 'none';
+        element.style.visibility = 'hidden';
+        element.style.position = 'absolute';
+        element.style.opacity = '0';
+        element.style.pointerEvents = 'none';
+      }
+    }
+  
+    /*
+    * Format Active Filters
+    * Format the active_filters object for use in ALM.
+    * 
+    * @since 1.0.0
+    * @param void
+    * @return object {taxonomies: string, terms: string, operator: string}
+    */
+    charter_get_active_filters_formatted() {
+      let taxonomies_array = [], terms_array = [], operator_array = [];
+      let taxonomies_string = '', terms_string = '', operator_string = '';
+      let active_filters_taxonomies = this.active_filters.taxonomies;
+  
+      for (let i = 0; i < active_filters_taxonomies.length; i++) {
+        let taxonomy = active_filters_taxonomies[i];
+  
+        if (taxonomy.terms.length > 0) {
+          taxonomies_array.push(taxonomy.taxonomy);
+          let term_slugs = taxonomy.terms.map(x => x.term_slug).join(',');
+          terms_array.push(term_slugs);
+          operator_array.push('IN');
+        }
+  
+      }
+  
+      taxonomies_string = taxonomies_array.join(':');
+      terms_string = terms_array.join(':');
+      operator_string = operator_array.join(':');
+  
+      return {taxonomies: taxonomies_string, terms: terms_string, operator: operator_string};
+    }
 
-      // Check if inputs are found
-      if (data_inputs !== null && data_inputs.length > 0) {
-
-        // Loop through all inputs with data-charter attribute
-        for (let i = 0; i < data_inputs.length; i++) {
-          const input = data_inputs[i]
-          const input_type = input.getAttribute('data-input');
-          const key = input_type;
-
-          // Check if input is checkbox
-          if (input_type === 'checkbox' || input_type === 'radio') {
-            const taxonomy = input.getAttribute('data-tax');
-
-            // Check if data-taxonomy attribute exists
-            if (taxonomy === null) {
-              console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
-              _return = false;
-            } else {
-
-              // Add class and attributes to input
-              input.classList.add('charter-' + input_type);
-              input.setAttribute('role', input_type);
-              input.setAttribute('aria-checked', 'false');
-              input.setAttribute('tabindex', '0');
-
-              //if taxonomy doesn't exist in active_filters.taxonomies, add it
-              if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
-                this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
-              }
-
-              // Add input to inputs array
-              inputs.push({
-                [key]: {
-                  input: input,
-                  taxonomy: taxonomy,
-                }
-              });
-
-            }
-          } else if (input_type === 'select') {
-            const taxonomy = input.getAttribute('data-tax');
-
-            // Check if data-taxonomy attribute exists
-            if (taxonomy === null) {
-              console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
-              _return = false;
-            } else {
-
-              // Add class and attributes to input
-              input.classList.add('charter-select');
-
-              //if taxonomy doesn't exist in active_filters.taxonomies, add it
-              if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
-                this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
-              }
-
-              // Add input to inputs array
-              inputs.push({
-                [key]: {
-                  input: input,
-                  taxonomy: taxonomy,
-                }
-              });
-            }
-          } else if (input_type === 'text') {
-
-              const value = input.value;
-
-              // Add class to input
-              input.classList.add('charter-text');
-
-              // Add input to inputs array
-              inputs.push({
-                [key]: {
-                  input: input,
-                  keyword: value,
-                }
-              });
-          } else {
-            console.error('DG Charter Error: ' + input_type + ' is not a valid data-input value. Please use text, select, checkbox, or radio.');
-            _return = false;
-          }
+    /*
+    * Update results text
+    * Update the results text based on the number of results found.
+    * 
+    * @since 1.0.5
+    * @param HTMLElement container
+    * @return void
+    */
+    charter_update_results_text(count) {
+      if (this.settings.results.result_text == null || this.settings.results.result_text === '') return;
+      let container = document.querySelector(this.settings.results.result_text);
+      if (container !== null) {
+        if (count > 0) {
+          container.innerHTML = 'Viewing ' + count + ' results';
+        } else {
+          container.innerHTML = 'No results found';
         }
       } else {
-        console.error('DG Charter Error: No inputs found. Please add [data-input] attribute to your inputs.');
-        _return = false;
+        console.error('DG Charter Error: No results text container found with class ' + this.settings.results.result_text + '. Make sure to include a "." before the class name.');
       }
     }
-
-    // Check if clear button exists
-    if (this.settings.clear_button.class !== '') {
-      let clear_button = document.querySelector(this.settings.clear_button.class);
-
-      // Check if clear button exists
-      if (clear_button === null) {
-        console.error('DG Charter Error: No clear button found with class ' + this.settings.clear_button.class + '. Make sure to include a "." before the class name.');
-        _return = false;
-      } else {
-        // Add class to clear button
-        clear_button.classList.add('charter-clear-button');
-        inputs.push({
-          clear_button: {
-            input: clear_button,
+  
+    /*
+    * Update Labels
+    * Add or remove labels based on active_filters object.
+    * 
+    * @since 1.0.0
+    * @param HTMLElement container
+    * @return void
+    */
+    charter_update_labels(container) {
+      let taxonomies = this.active_filters.taxonomies;
+      let keyword = this.active_filters.keyword;
+      let order = this.active_filters.order;
+      let labels = [];
+      // Add labels to container
+      if (container !== null) {
+        if (taxonomies.length > 0 && this.settings.label_container.taxonomies) {
+          // Loop through all taxonomies
+          for (let i = 0; i < taxonomies.length; i++) {
+            let taxonomy = taxonomies[i];
+            let terms = taxonomy.terms;
+      
+            // Loop through all terms in taxonomy
+            for (let j = 0; j < terms.length; j++) {
+              let term = terms[j];
+              labels.push({slug: term.term_slug, name: term.term_name});
+            }
           }
-        });
-      }
-    }
-
-    //check is submit button exists
-    if (this.settings.submit_button.class !== '') {
-      let submit_button = document.querySelector(this.settings.submit_button.class);
-
-      // Check if submit button exists
-      if (submit_button === null) {
-        console.error('DG Charter Error: No submit button found with class ' + this.settings.submit_button.class + '. Make sure to include a "." before the class name.');
-        _return = false;
-      } else {
-        // Add class to submit button
-        inputs.push({
-          submit_button: {
-            input: submit_button,
+        }
+  
+        // Add keyword to labels
+        if (keyword !== '' && this.settings.label_container.keyword) {
+          labels.push({keyword: keyword});
+        }
+  
+        // Add order to labels
+        if (order !== 'ASC' && this.settings.label_container.order) {
+          labels.push({slug: order, name: order});
+        }
+        container.innerHTML = '';
+        container.classList.add('charter-labels');
+        for (let i = 0; i < labels.length; i++) {
+          let label = document.createElement('div');
+          label.classList.add('tag');
+          label.classList.add('blue');
+          label.classList.add('charter-label');
+          let icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="17" viewBox="0 0 16 17" fill="none"><path d="m12 4.14-8 8m0-8 8 8" stroke="#2D2926" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          
+          // if slug is set, add a data-term attribute
+          if (labels[i].slug !== undefined) {
+            label.setAttribute('data-term', labels[i].slug);
+            label.innerHTML = '<span>' + labels[i].name + '</span>' + icon;
           }
-        });
-      }
-    }
-    
-    return _return;
-  }
+          // if keyword is set, add a data-keyword attribute
+          if (labels[i].keyword !== undefined) {
+            label.setAttribute('data-keyword', labels[i].keyword);
+            label.innerHTML = '<span>' + labels[i].keyword + '</span>' + icon;
+          } 
 
-  /*
-  * Set Events
-  * Set events for all inputs in the settings object.
-  *
-  * @since 1.0.0
-  * @param void
-  * @return void
-  */
 
-  charter_events() {
-    let inputs = this.settings.inputs;
-    
-    let submit_only = this.settings.submit_button.submit_only;
-
-      if (inputs !== null && inputs.length > 0) {
-        for (let i = 0; i < inputs.length; i++) {
-          let input = inputs[i];
-          let input_type = Object.keys(input)[0];       
-
-          if (input_type === 'checkbox' || input_type === 'radio') {
+          // if clickable is set to true, add a click event to remove label
+          if (this.settings.label_container.clickable) {
+            label.style.cursor = 'pointer';
+            label.setAttribute('tabindex', '0');
             const handler = (e) => {
               if (e.type === 'keyup' && e.key !== 'Enter') return;
-                let taxonomy = input[input_type].taxonomy;
-                let term_slug = input[input_type].input.getAttribute('data-term');
-                let term_name = input[input_type].input.innerText;
-                this.charter_update_active_filters(taxonomy, term_slug, term_name, (input_type === 'radio'));
-                if (!submit_only) this.charter_filter();
-                this.charter_update_ui(!submit_only);
-            }
-            input[input_type].input.addEventListener('click', handler);
-            input[input_type].input.addEventListener('keyup', handler);
-          } else if (input_type === 'text') {
-            input[input_type].input.addEventListener('keyup', (e) => {
-              this.active_filters.keyword = input[input_type].input.value;
-              if (e.key === 'Enter') {
-                if (!submit_only) this.charter_filter();
-                this.charter_update_ui(!submit_only);
+              let term_slug = e.target.getAttribute('data-term');
+              if (term_slug !== null) {
+                let taxonomy = this.active_filters.taxonomies.find(x => x.terms.findIndex(x => x.term_slug === term_slug) !== -1);
+                let term = taxonomy.terms.find(x => x.term_slug === term_slug);
+                this.charter_update_active_filters(taxonomy.taxonomy, term.term_slug, term.term_name, false);
               }
-            });
-          } else if (input_type === 'select') {
-            // TODO: revisit select input after tom select is implemented
-
-          } else if (input_type === 'clear_button') {
-            input.clear_button.input.addEventListener('click', (e) => {
-              this.charter_clear_active_filters()
+              let keyword = e.target.getAttribute('data-keyword');
+              if (keyword !== null) {
+                this.active_filters.keyword = '';
+              }
+              // remove label from container
               this.charter_filter();
               this.charter_update_ui();
-            });
-          } else if (input_type === 'submit_button') {
-            input.submit_button.input.addEventListener('click', (e) => {
-              this.charter_filter();
-              this.charter_update_ui();
-            });
+            }
+            label.addEventListener('click', handler);
+            label.addEventListener('keyup', handler);
+          }
+          container.appendChild(label);
+        }
+      }
+    }
+  
+    /*
+    * Update UI
+    * Update Inputs, Clear Button, and Submit Button based on active_filters object.
+    * 
+    * @since 1.0.0
+    * @param void
+    * @return void
+    */
+    charter_update_ui(update_labels = true) {
+      let inputs = this.settings.inputs;
+      let taxonomies = this.active_filters.taxonomies;
+      let keyword = this.active_filters.keyword;
+      let order = this.active_filters.order;
+  
+      // Loop through all inputs
+      for (let i = 0; i < inputs.length; i++) {
+        let input = inputs[i];
+        let input_type = Object.keys(input)[0];
+  
+        if (input_type === 'checkbox' || input_type === 'radio') {
+          let taxonomy = input[input_type].taxonomy;
+          let term_slug = input[input_type].input.getAttribute('data-term');
+          //let label = document.querySelector('label[for="' + input[input_type].input.id + '"]');
+          //let term_name = label.innerText;
+          let term_index = taxonomies.findIndex(x => x.taxonomy === taxonomy);
+          let term = taxonomies[term_index].terms.find(x => x.term_slug === term_slug);
+  
+          if (term !== undefined) {
+            input[input_type].input.classList.add('active');
+            input[input_type].input.setAttribute('aria-checked', 'true');
+          } else {
+            input[input_type].input.classList.remove('active');
+            input[input_type].input.setAttribute('aria-checked', 'false');
+          }
+        } else if (input_type === 'text') {
+          input[input_type].input.value = keyword;
+        } else if (input_type === 'select') {
+          let taxonomy = input[input_type].taxonomy;
+          let term_slug = input[input_type].input.value;
+          let term_index = taxonomies.findIndex(x => x.taxonomy === taxonomy);
+          let term = taxonomies[term_index].terms.find(x => x.term_slug === term_slug);
+  
+          if (term !== undefined) {
+            input[input_type].input.selectedIndex = term_index;
+          } else {
+            input[input_type].input.selectedIndex = 0;
           }
         }
       }
-  }
+  
+      // Update clear button
+      if (this.settings.clear_button.class !== '') {
+        let clear_button = document.querySelector(this.settings.clear_button.class);
+        if (this.filter_active) {
+          clear_button.classList.add('active');
+        } else {
+          clear_button.classList.remove('active');
+        }
+      }
 
-  /*
-  * Initialize Charter
-  *
-  * @since 1.0.0
-  * @param void
-  * @return void
-  */
-
-  charter_init() {
-    if (this.settings.filter_type === '') {
-      console.error('DG Charter Error: No filter_type found. Please add filter_type to settings object (ALM or JS).'); 
-      return;
+      //label container
+      if (this.settings.label_container.class !== '' && update_labels) {
+        let label_container = document.querySelector(this.settings.label_container.class);
+        this.charter_update_labels(label_container);
+      }
+  
+      // Update submit button
+      if (this.settings.submit_button.class !== '') {
+        let submit_button = document.querySelector(this.settings.submit_button.class);
+        if (this.filter_active) {
+          submit_button.classList.add('active');
+        } else {
+          submit_button.classList.remove('active');
+        }
+      }
     }
-    if (!this.charter_inputs()) return; // If no inputs are found, return.
-    this.charter_events();
+  
+    /*
+    * Filter Items
+    * References the active_filters object and filters items. Using ALM or JS.
+    * 
+    * @since 1.0.0
+    * @param void
+    * @return void
+    */
+    charter_filter() {
+      if (this.settings.filter_type === 'ALM') { // Filter with ALM
+        let Active_Filters = this.charter_get_active_filters_formatted();
+        let args = {
+          taxonomies: (Active_Filters.taxonomies !== null) ? Active_Filters.taxonomies : '',
+          terms: (Active_Filters.terms !== null) ? Active_Filters.terms : '',
+          operator: (Active_Filters.operator !== null) ? Active_Filters.operator : '',
+          keyword: this.active_filters.keyword,
+          order: this.active_filters.order,
+        };
+        this.charter_ajaxloadmore(args);
+  
+        if (args.taxonomies !== '' || args.keyword !== '' || args.order !== 'ASC') {
+          this.filter_active = true;
+        } else if (args.taxonomies === '' && args.keyword === '' && args.order === 'ASC') {
+          this.filter_active = false;
+        }
+  
+        // if callback is set, run callback
+        if (this.settings.callback !== null) {
+          this.settings.callback();
+        }
+      } else if (this.settings.filter_type === 'JS') { // Filter with JS
+        if (this.settings.results.container_class === '') { console.error('DG Charter Error: No results "results.container_class" found.'); return; }
+        if (this.settings.results.result_class === '') { console.error('DG Charter Error: No results "results.result_class" found.'); return; }
+        let results_containers = document.querySelectorAll(this.settings.results.container_class);
+        if (results_containers === null || results_containers.length < 0) { console.error('DG Charter Error: No results container found with class ' + this.settings.results.container_class + '. Make sure to include a "." before the class name.'); return; }
+        for (let i = 0; i < results_containers.length; i++) {
+          const results_container = results_containers[i];
+          let results = results_container.querySelectorAll(this.settings.results.result_class);
+          if (results === null) { console.error('DG Charter Error: No results found with class ' + this.settings.results.result_class + '. Make sure to include a "." before the class name.'); return; }
+          let active_terms = this.active_filters.taxonomies.map(x => x.terms).flat(); //get active filters
+          let term_slugs = active_terms.map(x => x.term_slug);
+          term_slugs = term_slugs.join(',');
+  
+  
+          // Loop through all results and add to matches array
+          if (results.length > 0) {
+            results_container.classList.add('charter-animating');
+            let matches = 0;
+            for (var key in results) {
+              if (!results.hasOwnProperty(key)) continue; // skip if not a property of the object
+              const result = results[key];
+              const args = result.getAttribute('data-args');
+              let match_found = false;
+              if (args !== null) {
+                const args_json = JSON.parse(args);
+                const taxonomies = args_json.taxonomies;
+                const keyword = args_json.keyword;
+
+                // filter by taxonomy if axtive
+                if (active_terms.length > 0 && taxonomies !== undefined) {
+                  const taxonomy = Object.keys(taxonomies);
+                  for (let j = 0; j < taxonomy.length; j++) {
+                    let term_slug = taxonomies[taxonomy[j]];
+                    if (term_slugs.indexOf(term_slug) !== -1 && term_slug !== '') {
+                      match_found = true;
+                    } 
+                  }
+                } else {
+                  match_found = true;
+                }
+                
+                // Remove if keyword is not empty and keyword is not found in result
+                if (this.active_filters.keyword !== '' && keyword !== undefined) {
+                  if (keyword.toLowerCase().indexOf(this.active_filters.keyword) !== -1) {
+                  } else {
+                    match_found = false;
+                  }
+                }
+
+                if (match_found) matches++;
+                
+                results_container.classList.add('charter-animating');
+                setTimeout(() => {
+                  if (match_found) {
+                    this.charter_toggle_visibility(result, true); // show the result
+                  } else {
+                    this.charter_toggle_visibility(result, false); // hide the result
+                  }
+                  if (this.settings.results.result_text !== '' && this.settings.results.container_class !== '') {
+                    this.charter_update_results_text(matches);
+                  }
+                  results_container.classList.remove('charter-animating');
+                }, 500);
+                
+                
+              } else {
+                console.error('DG Charter Error: No data-args attribute found on result. Please add data-args attribute to your results.');
+                return;
+              }
+            }
+          }
+        }
+        // if callback is set, run callback
+        if (this.settings.callback !== null) {
+          setTimeout(() => { this.settings.callback(); }, 500);
+        }
+      } else {
+        console.error('DG Charter Error: No valid filter_type found. Please use ALM or JS.');
+      }
+    }
+  
+    /*
+    * Set Inputs
+    * Find all inputs with data-charter attribute and set them as inputs in the settings object.
+    *
+    * @since 1.0.0
+    * @param void
+    * @return boolean (true if inputs are found, false if no inputs are found)
+    */
+    charter_inputs() {
+      let _return = true;
+      let inputs = this.settings.inputs;
+      const filter_containers = document.querySelectorAll('[data-charter="' + this.slug + '"]');
+  
+      // Check if filter containers are found
+      if (filter_containers === null || filter_containers.length === 0) {
+        console.error('DG Charter Error: No filter containers found with data-charter attribute.');
+        return false;
+      }
+  
+      // Loop through all filter containers
+      for (let i = 0; i < filter_containers.length; i++) {
+        let data_inputs = filter_containers[i].querySelectorAll('[data-input]');
+  
+        // Check if inputs are found
+        if (data_inputs !== null && data_inputs.length > 0) {
+  
+          // Loop through all inputs with data-charter attribute
+          for (let i = 0; i < data_inputs.length; i++) {
+            const input = data_inputs[i]
+            const input_type = input.getAttribute('data-input');
+            const key = input_type;
+  
+            // Check if input is checkbox
+            if (input_type === 'checkbox' || input_type === 'radio') {
+              const taxonomy = input.getAttribute('data-tax');
+  
+              // Check if data-taxonomy attribute exists
+              if (taxonomy === null) {
+                console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
+                _return = false;
+              } else {
+  
+                // Add class and attributes to input
+                input.classList.add('charter-' + input_type);
+                input.setAttribute('role', input_type);
+                input.setAttribute('aria-checked', 'false');
+                input.setAttribute('tabindex', '0');
+  
+                //if taxonomy doesn't exist in active_filters.taxonomies, add it
+                if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
+                  this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
+                }
+  
+                // Add input to inputs array
+                inputs.push({
+                  [key]: {
+                    input: input,
+                    taxonomy: taxonomy,
+                  }
+                });
+  
+              }
+            } else if (input_type === 'select') {
+              const taxonomy = input.getAttribute('data-tax');
+  
+              // Check if data-taxonomy attribute exists
+              if (taxonomy === null) {
+                console.error('DG Charter Error: No data-tax attribute found on ' + input_type + ' input.');
+                _return = false;
+              } else {
+  
+                // Add class and attributes to input
+                input.classList.add('charter-select');
+  
+                //if taxonomy doesn't exist in active_filters.taxonomies, add it
+                if (this.active_filters.taxonomies.findIndex(x => x.taxonomy === taxonomy) === -1) {
+                  this.active_filters.taxonomies.push({taxonomy: taxonomy, terms: []});
+                }
+  
+                // Add input to inputs array
+                inputs.push({
+                  [key]: {
+                    input: input,
+                    taxonomy: taxonomy,
+                  }
+                });
+              }
+            } else if (input_type === 'text') {
+  
+                const value = input.value;
+  
+                // Add class to input
+                input.classList.add('charter-text');
+  
+                // Add input to inputs array
+                inputs.push({
+                  [key]: {
+                    input: input,
+                    keyword: value,
+                  }
+                });
+            } else {
+              console.error('DG Charter Error: ' + input_type + ' is not a valid data-input value. Please use text, select, checkbox, or radio.');
+              _return = false;
+            }
+          }
+        } else {
+          console.error('DG Charter Error: No inputs found. Please add [data-input] attribute to your inputs.');
+          _return = false;
+        }
+      }
+  
+      // Check if clear button exists
+      if (this.settings.clear_button.class !== '') {
+        let clear_button = document.querySelector(this.settings.clear_button.class);
+  
+        // Check if clear button exists
+        if (clear_button === null) {
+          console.error('DG Charter Error: No clear button found with class ' + this.settings.clear_button.class + '. Make sure to include a "." before the class name.');
+          _return = false;
+        } else {
+          // Add class to clear button
+          clear_button.classList.add('charter-clear-button');
+          inputs.push({
+            clear_button: {
+              input: clear_button,
+            }
+          });
+        }
+      }
+  
+      //check is submit button exists
+      if (this.settings.submit_button.class !== '') {
+        let submit_button = document.querySelector(this.settings.submit_button.class);
+  
+        // Check if submit button exists
+        if (submit_button === null) {
+          console.error('DG Charter Error: No submit button found with class ' + this.settings.submit_button.class + '. Make sure to include a "." before the class name.');
+          _return = false;
+        } else {
+          // Add class to submit button
+          inputs.push({
+            submit_button: {
+              input: submit_button,
+            }
+          });
+        }
+      }
+      
+      return _return;
+    }
+  
+    /*
+    * Set Events
+    * Set events for all inputs in the settings object.
+    *
+    * @since 1.0.0
+    * @param void
+    * @return void
+    */
+    charter_events() {
+      let inputs = this.settings.inputs;
+      
+      let submit_only = this.settings.submit_button.submit_only;
+  
+        if (inputs !== null && inputs.length > 0) {
+          for (let i = 0; i < inputs.length; i++) {
+            let input = inputs[i];
+            let input_type = Object.keys(input)[0];       
+  
+            if (input_type === 'checkbox' || input_type === 'radio') {
+              const handler = (e) => {
+                if (e.type === 'keyup' && e.key !== 'Enter') return;
+                  let taxonomy = input[input_type].taxonomy;
+                  let term_slug = input[input_type].input.getAttribute('data-term');
+                  let term_name = input[input_type].input.innerText;
+                  this.charter_update_active_filters(taxonomy, term_slug, term_name, (input_type === 'radio'));
+                  if (!submit_only) this.charter_filter();
+                  this.charter_update_ui(!submit_only);
+              }
+              input[input_type].input.addEventListener('click', handler);
+              input[input_type].input.addEventListener('keyup', handler);
+            } else if (input_type === 'text') {
+              input[input_type].input.addEventListener('keyup', (e) => {
+                this.active_filters.keyword = input[input_type].input.value.toLowerCase();
+                if (e.key === 'Enter') {
+                  if (!submit_only) this.charter_filter();
+                  this.charter_update_ui(!submit_only);
+                }
+              });
+            } else if (input_type === 'select') {
+              // TODO: revisit select input after tom select is implemented
+              // input[input_type].input.addEventListener('change', (e) => {
+              //   let taxonomy = input[input_type].taxonomy;
+              //   let term_slug = input[input_type].input.value;
+              //   let term_name = input[input_type].input.options[input[input_type].input.selectedIndex].text;
+              //   this.charter_update_active_filters(taxonomy, term_slug, term_name, true);
+              //   if (!submit_only) this.charter_filter();
+              // });
+            } else if (input_type === 'clear_button') {
+              input.clear_button.input.addEventListener('click', (e) => {
+                this.charter_clear_active_filters()
+                this.charter_filter();
+              });
+            } else if (input_type === 'submit_button') {
+              input.submit_button.input.addEventListener('click', (e) => {
+                this.charter_filter();
+              });
+            }
+          }
+        }
+    }
+  
+    /*
+    * Initialize Charter
+    *
+    * @since 1.0.0
+    * @param void
+    * @return void
+    */
+    charter_init() {
+      if (this.settings.filter_type === '') {
+        console.error('DG Charter Error: No filter_type found. Please add filter_type to settings object (ALM or JS).'); 
+        return;
+      }
+      if (!this.charter_inputs()) return; // If no inputs are found, return.
+      this.charter_events();
+      if (this.settings.results.result_text !== '' && this.settings.results.container_class !== '') {
+        let results_container = document.querySelector(this.settings.results.container_class);
+        if (results_container === null) { console.error('DG Charter Error: No results container found with class ' + this.settings.results.container_class + '. Make sure to include a "." before the class name.'); return; }
+        let results = results_container.querySelectorAll(this.settings.results.result_class);
+        let results_count = (results !== null) ? results.length : 0;
+        this.charter_update_results_text(results_count);
+      }
+    }
   }
-}
-
-
