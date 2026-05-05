@@ -1,5 +1,5 @@
 /*
- * Charter 1.0.2
+ * Charter 1.0.5
  * A lightweight filtering plugin.
  *
  * @dependency: Ajax Load More - https://connekthq.com/plugins/ajax-load-more/

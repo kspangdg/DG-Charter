@@ -1,6 +1,6 @@
-# Charter 1.0.2
+# Charter 1.0.5
 
-Charter is a lightweight filtering plugin that works with Ajax Load More to filter posts by taxonomy terms.
+Charter is a lightweight filtering plugin that works with Ajax Load More or standalone JS to filter posts by taxonomy terms.
 
 ## Installation
 
@@ -10,11 +10,11 @@ Charter is a lightweight filtering plugin that works with Ajax Load More to filt
 ## Usage
 
 - Add `data-charter="filter_name"` attribute with a unique filter name to the Input container. Please note you can have mutliple filters with the same name. If for example you need a separate filter for mobile, or you want to break up the filter into multiple sections, you can use the same name. They will all sync together. Changes to one filter will be reflected in all filters with the same name.
-- Add `data-input="{type}"` attribute to all inputs you want to use for filtering (text, checkbox, radio). If multiple text inputs are used, the last one modified will be used for filtering.
+- Add `data-input="{type}"` attribute to all inputs you want to use for filtering (text, checkbox, radio, select). If multiple text inputs are used, the last one modified will be used for filtering.
 - Add `data-tax="taxonomy_name"` attribute to all inputs
 - Add `data-term="term_slug"` attribute to all inputs
 
-### Example
+### HTML Example
 
 ```php
 <!-- Input container -->
@@ -32,6 +32,13 @@ Charter is a lightweight filtering plugin that works with Ajax Load More to filt
     <div data-input="radio" data-tax="filter-month" data-term="july">July</div>
     <div data-input="radio" data-tax="filter-month" data-term="june">June</div>
 
+    <!-- select -->
+    <select data-input="select" data-tax="filter-category">
+        <option value="">All</option>
+        <option value="news">News</option>
+        <option value="events">Events</option>
+    </select>
+
 </fieldset>
 
 <!-- submit button -->
@@ -43,24 +50,31 @@ Charter is a lightweight filtering plugin that works with Ajax Load More to filt
 <!-- clear button -->
 <button class="filter_name_clear">Clear</button>
 
-<!-- Ajax Load More result text container -->
-<div class="alm-results-text">Loading...</div>
+<!-- results text container -->
+<div class="filter_name_results_text"></div>
 
 
 <!-- If you are using Ajax Load More, add the following -->
 <?php echo do_shortcode('[ajax_load_more id="filter_name" post_type="post"]'); ?>
 
+<!-- If you are using JS filtering, add a results container with data-args on each result -->
+<div class="filter_name_results">
+    <div class="result" data-args='{"taxonomies": {"location": "new-york"}, "keyword": "example"}'>Result 1</div>
+    <div class="result" data-args='{"taxonomies": {"location": "boston"}, "keyword": "sample"}'>Result 2</div>
+</div>
+
 ```
 Please note that `type="text"` is used for search input.
 
+When using `filter_type: 'JS'`, each result element must include a `data-args` attribute containing a JSON object with `taxonomies` and/or `keyword` properties for filtering to work.
 
 - Initialize a new instance of Charter with the following:
 
-### Example
+### JavaScript Example (ALM)
 
 ```javascript
 const filter_name = new Charter('filter_name', {
-    filter_type: 'ALM', // 'ALM' or 'JS' (JS not supported yet)
+    filter_type: 'ALM', // 'ALM' or 'JS'
     clear_button: {
         class: '.filter_name_clear', // Class name of the clear button
     },
@@ -88,21 +102,53 @@ window.almEmpty = function (alm) {
 }
 ```
 
+### JavaScript Example (JS)
+
+```javascript
+const filter_name = new Charter('filter_name', {
+    filter_type: 'JS', // Use JS filtering (no ALM dependency)
+    clear_button: {
+        class: '.filter_name_clear',
+    },
+    label_container: {
+        class: '.filter_name_labels',
+        clickable: true,
+        taxonomies: true,
+        keyword: false,
+        order: false,
+    },
+    submit_button: {
+        class: '.filter_name_submit',
+        submit_only: true,
+    },
+    results: {
+        container_class: '.filter_name_results', // Class of the results container
+        result_class: '.result', // Class of each result item
+        result_text: '.filter_name_results_text', // Class of the results text container (e.g. "Viewing 5 results")
+    },
+    callback: function () {
+        // Add your custom callback here
+    }
+});
+```
+
 
 ##### Known Issues / Future Improvements
-- Order seletor support not added yet (ASC, DESC. etc)
-- Add filter_type: 'JS' to use with JS filtering only (not ALM)
+- Order selector support not added yet (ASC, DESC, etc)
 - Add support for tom-select dropdowns
 - Find cleaner way to set alm_is_animating to false (window.almComplete, window.almEmpty not working inside class)
 
 ##### Changelog
+- 1.0.5 - Added results text display, added toggle visibility utility, minor bug fixes
+- 1.0.4 - Added select input support
+- 1.0.3 - Added JS filtering support (`filter_type: 'JS'`), added `results` configuration options with `container_class`, `result_class`, and `result_text`
 - 1.0.2 - Added base styes for inputs, added radio support, made ADA improvements, plus minor bug fixes
 - 1.0.1 - Added support for multiple filters with the same name and added submit button support
 - 1.0.0 - Initial release
 
 <hr>
 
-Dependencies: [Ajax Load More](https://connekthq.com/plugins/ajax-load-more/)<br>
-License: Copyright 2024, Durkan Group. All rights reserved.<br>
+Dependencies: [Ajax Load More](https://connekthq.com/plugins/ajax-load-more/) (only required for `filter_type: 'ALM'`)<br>
+License: Copyright 2025, Durkan Group. All rights reserved.<br>
 Author: Keith Spang, kspang@durkangroup.com<br>
 
